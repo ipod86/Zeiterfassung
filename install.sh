@@ -101,6 +101,8 @@ $SUDO cp -a "$SRC/." "$INSTALL_DIR/"
 # nicht benötigte Entwicklungsdateien entfernen
 $SUDO rm -rf "$INSTALL_DIR/.git" "$INSTALL_DIR/.github" "$INSTALL_DIR/.claude"
 $SUDO mkdir -p "$INSTALL_DIR/data"
+# gewählten Port hinterlegen (run.py liest data/.port; bei Updates geschützt)
+echo "$PORT" | $SUDO tee "$INSTALL_DIR/data/.port" >/dev/null
 $SUDO chown -R "$RUN_USER":"$RUN_USER" "$INSTALL_DIR"
 
 # 4) venv + Abhängigkeiten
@@ -121,7 +123,6 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 WorkingDirectory=${INSTALL_DIR}
-Environment=PORT=${PORT}
 ExecStart=${INSTALL_DIR}/.venv/bin/python ${INSTALL_DIR}/supervisor.py
 Restart=always
 RestartSec=3

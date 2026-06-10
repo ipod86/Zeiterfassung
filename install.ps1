@@ -86,6 +86,8 @@ try {
     Copy-Item -Path $_.FullName -Destination $InstallDir -Recurse -Force
   }
   New-Item -ItemType Directory -Path (Join-Path $InstallDir "data") -Force | Out-Null
+  # gewaehlten Port hinterlegen (run.py liest data\.port; bei Updates geschuetzt)
+  Set-Content -Path (Join-Path $InstallDir "data\.port") -Value "$Port" -Encoding ascii -NoNewline
   foreach ($junk in @(".git", ".github", ".claude")) {
     $p = Join-Path $InstallDir $junk
     if (Test-Path $p) { Remove-Item $p -Recurse -Force }

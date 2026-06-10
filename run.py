@@ -5,6 +5,27 @@ from app import create_app
 app = create_app()
 
 
+def _resolve_port():
+    """Port, in dieser Reihenfolge: Umgebungsvariable PORT -> data/.port -> 5050.
+
+    Die Datei data/.port wird vom Installer mit dem gewählten Port geschrieben
+    und liegt im (bei Updates geschützten) data-Verzeichnis, sodass jede
+    Installation ihren eigenen Port behält.
+    """
+    env = os.environ.get("PORT", "").strip()
+    if env.isdigit():
+        return int(env)
+    try:
+        pf = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", ".port")
+        with open(pf, encoding="utf-8") as f:
+            val = f.read().strip()
+        if val.isdigit():
+            return int(val)
+    except OSError:
+        pass
+    return 5050
+
+
 def _local_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -17,7 +38,7 @@ def _local_ip():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "5050"))
+    port = _resolve_port()
     host = "0.0.0.0"
     ip = _local_ip()
     print("=" * 56)
