@@ -6,26 +6,74 @@
 # venv ein und legt einen systemd-Dienst an, der den Server beim Booten
 # startet und bei Absturz neu startet.
 #
-# Nutzung:
+# Geführte Installation (fragt Pfad, Port usw. ab):
 #   wget -qO install.sh https://raw.githubusercontent.com/ipod86/Zeiterfassung/main/install.sh
-#   bash install.sh                 # installiert nach /opt/zeiterfassung
-#   INSTALL_DIR=$HOME/zeit bash install.sh   # eigenes Zielverzeichnis
+#   bash install.sh
+#
+# Unbeaufsichtigt (keine Rückfragen) – Defaults bzw. Env-Variablen nutzen:
+#   NONINTERACTIVE=1 INSTALL_DIR=/opt/zeiterfassung PORT=5050 bash install.sh
 #
 set -euo pipefail
 
 OWNER="ipod86"
 REPO="Zeiterfassung"
-BRANCH="main"
+BRANCH="${BRANCH:-main}"
 ZIP_URL="https://github.com/${OWNER}/${REPO}/archive/refs/heads/${BRANCH}.zip"
-INSTALL_DIR="${INSTALL_DIR:-/opt/zeiterfassung}"
 SERVICE_NAME="zeiterfassung"
+
+# Vorgaben (per Env überschreibbar, in der geführten Abfrage als Default genutzt)
+INSTALL_DIR="${INSTALL_DIR:-/opt/zeiterfassung}"
 PORT="${PORT:-5050}"
-RUN_USER="${SUDO_USER:-$(whoami)}"
+RUN_USER="${RUN_USER:-${SUDO_USER:-$(whoami)}}"
+DO_AUTOSTART="${DO_AUTOSTART:-yes}"
+DO_FIREWALL="${DO_FIREWALL:-yes}"
+DO_START="${DO_START:-yes}"
+
+# ---------------------------------------------------------------------------
+# Geführte Abfrage (nur wenn ein Terminal verfügbar und nicht abgeschaltet)
+# ---------------------------------------------------------------------------
+INTERACTIVE=1
+[ "${NONINTERACTIVE:-0}" = "1" ] && INTERACTIVE=0
+[ -r /dev/tty ] || INTERACTIVE=0
+
+ask() {  # $1 = Frage, $2 = Default -> gibt Antwort aus
+  local prompt="$1" def="$2" ans=""
+  read -r -p "    $prompt [$def]: " ans </dev/tty || ans=""
+  echo "${ans:-$def}"
+}
+ask_yn() {  # $1 = Frage, $2 = Default (yes/no) -> Rückgabewert 0=ja 1=nein
+  local prompt="$1" def="$2" hint ans=""
+  case "$def" in [Yy]*) hint="J/n";; *) hint="j/N";; esac
+  read -r -p "    $prompt [$hint]: " ans </dev/tty || ans=""
+  ans="${ans:-$def}"
+  case "$ans" in [JjYy]*) return 0;; *) return 1;; esac
+}
+valid_port() { case "$1" in ''|*[!0-9]*) return 1;; *) [ "$1" -ge 1 ] && [ "$1" -le 65535 ];; esac; }
 
 echo "==> Zeiterfassung-Installation"
-echo "    Ziel:   $INSTALL_DIR"
-echo "    Nutzer: $RUN_USER"
-echo "    Port:   $PORT"
+
+if [ "$INTERACTIVE" = "1" ]; then
+  echo "    (Enter übernimmt jeweils den Vorschlag in eckigen Klammern)"
+  echo ""
+  INSTALL_DIR="$(ask "Installationspfad" "$INSTALL_DIR")"
+  while true; do
+    PORT="$(ask "Port" "$PORT")"
+    valid_port "$PORT" && break
+    echo "    ! Ungültiger Port (1–65535). Bitte erneut."
+  done
+  RUN_USER="$(ask "Dienst-Benutzer (läuft unter diesem Konto)" "$RUN_USER")"
+  if ask_yn "Autostart beim Booten + Neustart bei Absturz einrichten?" "$DO_AUTOSTART"; then DO_AUTOSTART="yes"; else DO_AUTOSTART="no"; fi
+  if ask_yn "Firewall-Port $PORT für Netzwerkzugriff öffnen (falls Firewall aktiv)?" "$DO_FIREWALL"; then DO_FIREWALL="yes"; else DO_FIREWALL="no"; fi
+  if ask_yn "Server nach der Installation sofort starten?" "$DO_START"; then DO_START="yes"; else DO_START="no"; fi
+  echo ""
+else
+  valid_port "$PORT" || { echo "Ungültiger Port: $PORT"; exit 1; }
+fi
+
+echo "    Ziel:      $INSTALL_DIR"
+echo "    Nutzer:    $RUN_USER"
+echo "    Port:      $PORT"
+echo "    Autostart: $DO_AUTOSTART   Firewall: $DO_FIREWALL   Start: $DO_START"
 
 SUDO=""
 if [ "$(id -u)" -ne 0 ]; then SUDO="sudo"; fi
@@ -62,8 +110,9 @@ sudo -u "$RUN_USER" "$INSTALL_DIR/.venv/bin/pip" install -q --upgrade pip
 sudo -u "$RUN_USER" "$INSTALL_DIR/.venv/bin/pip" install -q -r "$INSTALL_DIR/requirements.txt"
 
 # 5) systemd-Dienst (Autostart + Neustart bei Absturz)
-echo "==> Lege systemd-Dienst '$SERVICE_NAME' an…"
-$SUDO tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<UNIT
+if [ "$DO_AUTOSTART" = "yes" ]; then
+  echo "==> Lege systemd-Dienst '$SERVICE_NAME' an…"
+  $SUDO tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<UNIT
 [Unit]
 Description=Zeiterfassung
 After=network.target
@@ -80,17 +129,45 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target
 UNIT
+  $SUDO systemctl daemon-reload
+  $SUDO systemctl enable "$SERVICE_NAME"
+else
+  echo "==> Autostart übersprungen (manueller Start: $INSTALL_DIR/.venv/bin/python supervisor.py)."
+fi
 
-$SUDO systemctl daemon-reload
-$SUDO systemctl enable "$SERVICE_NAME"
-$SUDO systemctl restart "$SERVICE_NAME"
+# 6) Firewall-Port öffnen (best effort, nur wenn eine Firewall erkannt wird)
+if [ "$DO_FIREWALL" = "yes" ]; then
+  if command -v ufw >/dev/null 2>&1 && $SUDO ufw status 2>/dev/null | grep -qi active; then
+    echo "==> Öffne Port $PORT in ufw…"
+    $SUDO ufw allow "${PORT}/tcp" >/dev/null 2>&1 || true
+  elif command -v firewall-cmd >/dev/null 2>&1 && $SUDO firewall-cmd --state >/dev/null 2>&1; then
+    echo "==> Öffne Port $PORT in firewalld…"
+    $SUDO firewall-cmd --permanent --add-port="${PORT}/tcp" >/dev/null 2>&1 || true
+    $SUDO firewall-cmd --reload >/dev/null 2>&1 || true
+  else
+    echo "==> Keine aktive Firewall erkannt – Port-Freigabe übersprungen."
+  fi
+fi
+
+# 7) Starten
+if [ "$DO_START" = "yes" ]; then
+  if [ "$DO_AUTOSTART" = "yes" ]; then
+    $SUDO systemctl restart "$SERVICE_NAME"
+  else
+    echo "==> Starte Server (Hintergrund)…"
+    sudo -u "$RUN_USER" sh -c "cd '$INSTALL_DIR' && PORT='$PORT' nohup '.venv/bin/python' supervisor.py >/dev/null 2>&1 &"
+  fi
+fi
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo ""
-echo "==> Fertig! Zeiterfassung läuft als Dienst '$SERVICE_NAME'."
-echo "    Lokal:      http://localhost:${PORT}"
+echo "==> Fertig!"
+echo "    Lokal:       http://localhost:${PORT}"
 [ -n "$IP" ] && echo "    Im Netzwerk: http://${IP}:${PORT}"
 echo ""
-echo "    Status:   sudo systemctl status $SERVICE_NAME"
-echo "    Logs:     journalctl -u $SERVICE_NAME -f"
-echo "    Neustart: sudo systemctl restart $SERVICE_NAME"
+if [ "$DO_AUTOSTART" = "yes" ]; then
+  echo "    Status:   sudo systemctl status $SERVICE_NAME"
+  echo "    Logs:     journalctl -u $SERVICE_NAME -f"
+  echo "    Neustart: sudo systemctl restart $SERVICE_NAME"
+fi
+echo "    Vorhandene Daten: im Tool unter Einstellungen → Backup einspielen importieren."
