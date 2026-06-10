@@ -31,6 +31,8 @@ if __name__ == "__main__":
     if not dev or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         from app.backup import start_scheduler
         start_scheduler()
+        from app.updater import start_update_checker
+        start_update_checker()
     if dev:
         app.run(host=host, port=port, debug=True)
     else:

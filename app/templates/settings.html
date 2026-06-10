@@ -169,4 +169,32 @@
     <button class="btn danger">Backup einspielen</button>
   </form>
 </div>
+
+<div class="card" id="update-card"
+     data-current="{{ app_version }}"
+     data-available="{{ '1' if update_status.update_available else '0' }}"
+     data-latest="{{ update_status.latest or '' }}">
+  <h2>Software-Update</h2>
+  <p class="muted small">
+    Installierte Version: <strong id="upd-current">{{ app_version }}</strong>
+    {% if update_status.checked_at %}· zuletzt geprüft: {{ update_status.checked_at }}{% endif %}
+  </p>
+  <div id="upd-status" class="upd-status">
+    {% if update_status.update_available %}
+      <span class="upd-badge new">Neue Version {{ update_status.latest }} verfügbar</span>
+    {% elif update_status.latest %}
+      <span class="upd-badge ok">Aktuell – keine neuere Version</span>
+    {% endif %}
+  </div>
+  <div class="row" style="margin-top:10px; gap:8px">
+    <button type="button" class="btn" id="upd-check">Nach Updates suchen</button>
+    <button type="button" class="btn primary" id="upd-run"
+            {{ '' if update_status.update_available else 'disabled' }}>Jetzt aktualisieren &amp; neu starten</button>
+  </div>
+  <p class="muted small" style="margin-top:8px">
+    Das Update lädt die aktuelle Version von GitHub, legt vorher automatisch ein Backup an und
+    startet den Server selbstständig neu. Voraussetzung ist, dass der Server über den
+    mitgelieferten Dienst/Autostart läuft (Installer).
+  </p>
+</div>
 {% endblock %}

@@ -12,6 +12,7 @@ from ..db import (get_db, get_settings, set_setting, log_activity, get_rates,
                   get_recurring_tasks, DATA_DIR)
 from ..util import image_size
 from ..backup import build_backup_zip, list_backups, BACKUP_DIR
+from .. import updater
 
 bp = Blueprint("settings", __name__, url_prefix="/einstellungen")
 
@@ -36,7 +37,9 @@ def index():
                            user_theme=user_theme,
                            rates=get_rates(active_only=False),
                            recurring_tasks=get_recurring_tasks(active_only=False),
-                           auto_backups=list_backups())
+                           auto_backups=list_backups(),
+                           app_version=updater.current_version(),
+                           update_status=updater.cached())
 
 
 @bp.route("/speichern", methods=["POST"])
@@ -341,3 +344,32 @@ def user_delete(uid):
     log_activity("nutzer_geloescht", "user", uid, u["name"])
     flash("Nutzer gelöscht. Buchungen bleiben mit Namen erhalten.", "ok")
     return redirect(url_for("settings.index"))
+
+
+@bp.route("/update/check")
+def update_check():
+    """Ask GitHub whether a newer version exists (forced, fresh)."""
+    from flask import jsonify
+    return jsonify(updater.check(force=True))
+
+
+@bp.route("/update/run", methods=["POST"])
+def update_run():
+    """Download + stage the latest version, then restart via the supervisor."""
+    from flask import jsonify
+    status = updater.check(force=True)
+    if not status.get("update_available"):
+        return jsonify(ok=False, error="Keine neuere Version verfügbar."), 400
+    # safety: write today's backup before swapping any files
+    try:
+        from ..backup import write_daily_backup
+        write_daily_backup()
+    except Exception:  # noqa: BLE001 - never block the update on a backup hiccup
+        pass
+    ok, msg = updater.stage_update()
+    if not ok:
+        return jsonify(ok=False, error=msg), 500
+    log_activity("update", "app", None, f"{status['current']} -> {status['latest']}")
+    updater.request_restart()
+    return jsonify(ok=True, message=msg, restarting=True,
+                   latest=status.get("latest"))

@@ -28,7 +28,61 @@ document.addEventListener("DOMContentLoaded", () => {
   initBudgetAlerts();
   initHelp();
   initFeedback();
+  initUpdate();
 });
+
+// --- software update (settings page) ---
+function initUpdate() {
+  const card = document.getElementById("update-card");
+  if (!card) return;
+  const statusEl = card.querySelector("#upd-status");
+  const runBtn = card.querySelector("#upd-run");
+  const checkBtn = card.querySelector("#upd-check");
+  const curEl = card.querySelector("#upd-current");
+
+  function paint(d) {
+    if (d.current && curEl) curEl.textContent = d.current;
+    if (d.error) {
+      statusEl.innerHTML = `<span class="upd-badge err">Prüfung fehlgeschlagen</span>`;
+    } else if (d.update_available) {
+      statusEl.innerHTML = `<span class="upd-badge new">Neue Version ${escHtml(d.latest)} verfügbar</span>`;
+    } else if (d.latest) {
+      statusEl.innerHTML = `<span class="upd-badge ok">Aktuell – keine neuere Version</span>`;
+    }
+    runBtn.disabled = !d.update_available;
+  }
+
+  checkBtn.addEventListener("click", async () => {
+    checkBtn.disabled = true;
+    const old = checkBtn.textContent;
+    checkBtn.textContent = "Suche…";
+    try {
+      const res = await fetch("/einstellungen/update/check");
+      paint(await res.json());
+    } catch {
+      statusEl.innerHTML = `<span class="upd-badge err">Prüfung fehlgeschlagen</span>`;
+    } finally {
+      checkBtn.disabled = false;
+      checkBtn.textContent = old;
+    }
+  });
+
+  runBtn.addEventListener("click", async () => {
+    if (!confirm("Update jetzt installieren? Es wird vorher ein Backup angelegt und der Server neu gestartet. Das dauert ein paar Sekunden.")) return;
+    runBtn.disabled = true;
+    statusEl.innerHTML = `<span class="upd-badge">Update wird installiert, Server startet neu…</span>`;
+    try {
+      const data = await post("/einstellungen/update/run", {});
+      if (data.restarting) {
+        statusEl.innerHTML = `<span class="upd-badge">Server startet neu… Seite wird in 12 s neu geladen.</span>`;
+        setTimeout(() => location.reload(), 12000);
+      }
+    } catch (e) {
+      statusEl.innerHTML = `<span class="upd-badge err">${escHtml(e.message || "Fehler")}</span>`;
+      runBtn.disabled = false;
+    }
+  });
+}
 
 // --- feedback (bug / feature) modal with check-off list ---
 function escHtml(s) {

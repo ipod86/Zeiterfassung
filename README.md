@@ -11,19 +11,51 @@ Python/Flask + Vanilla-JS, ohne Build-Schritt.
 - `fpdf2` für PDF-Leistungsnachweise
 - Jinja2-Templates + Vanilla-JavaScript
 
-## Installation
+## Schnellinstallation (empfohlen)
+
+Der Installer lädt die aktuelle Version von GitHub, richtet eine venv ein und
+legt einen Autostart-Dienst an (startet beim Booten/Login, Neustart bei
+Absturz). Beim ersten Start wird automatisch eine leere Datenbank angelegt.
+
+**Debian / Ubuntu:**
+
+```bash
+wget -qO install.sh https://raw.githubusercontent.com/ipod86/Zeiterfassung/main/install.sh
+bash install.sh                       # installiert nach /opt/zeiterfassung
+# eigenes Ziel: INSTALL_DIR=$HOME/zeit bash install.sh
+```
+
+**Windows (PowerShell als Administrator):**
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/ipod86/Zeiterfassung/main/install.ps1 -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File install.ps1   # installiert nach C:\Zeiterfassung
+```
+
+Danach erreichbar unter `http://localhost:5050` bzw. `http://<rechner-ip>:5050`.
+Vorhandene Daten unter *Einstellungen → Backup einspielen* importieren — ohne
+Backup startet das Tool mit einer leeren Datenbank.
+
+## Updates
+
+Im Tool unter **Einstellungen → Software-Update**:
+
+- zeigt die installierte Version und ob auf GitHub eine neuere vorliegt
+  (es wird zusätzlich regelmäßig automatisch geprüft),
+- **„Jetzt aktualisieren"** lädt die neue Version, legt vorher ein Backup an,
+  tauscht die Dateien und startet den Server selbstständig neu.
+
+Das Selbst-Update setzt voraus, dass der Server über den Installer-Dienst
+(`supervisor.py`) läuft.
+
+## Manuelle Installation / Entwicklung
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # Linux/macOS
 pip install -r requirements.txt
-```
-
-## Starten
-
-```bash
-python run.py
+python run.py                 # oder: python supervisor.py (mit Auto-Restart)
 ```
 
 - Lokal:      http://localhost:5050
