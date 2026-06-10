@@ -1,0 +1,37 @@
+<dialog id="feedback-modal" class="help-modal">
+  <div class="modal-card help-card">
+    <div class="help-head">
+      <h3>🐞 Feedback</h3>
+      <button type="button" class="fb-close" aria-label="Schließen">✕</button>
+    </div>
+
+    <div class="help-body">
+      <form id="fb-form" onsubmit="return false">
+        <label>Art der Meldung
+          <select id="fb-type">
+            <option value="bug">🐞 Bug / Fehler</option>
+            <option value="feature">💡 Feature-Wunsch</option>
+          </select>
+        </label>
+        <label>Beschreibung
+          <textarea id="fb-message" rows="4"
+            placeholder="Was ist passiert bzw. was wünschst du dir?"></textarea>
+        </label>
+        <div class="row end">
+          <button type="button" class="btn primary" id="fb-save">Absenden</button>
+        </div>
+        <p id="fb-msg" class="muted" style="min-height:1em"></p>
+      </form>
+
+      <section style="border-top:1px solid var(--border);padding-top:14px">
+        <h4>Gemeldet <span id="fb-count" class="muted"></span></h4>
+        <p class="muted" style="margin:0 0 8px">Hake erledigte Punkte ab.</p>
+        <div id="fb-list" class="fb-list"><p class="muted">Lädt…</p></div>
+      </section>
+    </div>
+
+    <div class="row end help-foot">
+      <button type="button" class="btn ghost fb-close">Schließen</button>
+    </div>
+  </div>
+</dialog>

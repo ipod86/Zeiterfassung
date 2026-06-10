@@ -1,0 +1,12 @@
+{# Inner content of the Erfassen <tbody>. Used both by index.html and the
+   /api/grid in-place refresh so the top-5 / alphabetical sorting is identical. #}
+{% from "_entry_row.html" import row with context %}
+{% if top %}
+  <tr class="group-row"><td colspan="5">★ Zuletzt von {{ current_user_name }}</td></tr>
+  {% for r in top %}{{ row(r, rates, recurring_tasks, proj_used) }}{% endfor %}
+  <tr class="group-row"><td colspan="5">Alle Kunden (A–Z)</td></tr>
+{% endif %}
+{% for r in rest %}{{ row(r, rates, recurring_tasks, proj_used) }}{% endfor %}
+{% if not top and not rest %}
+  <tr><td colspan="5" class="muted pad">Noch keine Kunden — lege unter „Kunden &amp; Projekte" einen an.</td></tr>
+{% endif %}

@@ -1,0 +1,74 @@
+{# Shared Erfassen-row macros. Imported "with context" so the context-processor
+   global `money` and the registered filters (hms) are available inside. #}
+{% macro rate_options(rates, sel_amount=None, sel_id=None) %}
+  {% for rt in rates %}
+    <option value="{{ '%.2f'|format(rt.amount) }}" data-id="{{ rt.id }}"
+      {{ 'selected' if (sel_id and rt.id==sel_id) or (sel_amount is not none and not sel_id and '%.2f'|format(rt.amount)=='%.2f'|format(sel_amount)) }}>
+      {{ rt.label }} – {{ money(rt.amount) }}
+    </option>
+  {% endfor %}
+{% endmacro %}
+
+{% macro row(r, rates, rectasks=[], proj_used={}) %}
+  {% set c = r.customer %}
+  {% set projnames = (r.projects | map(attribute='name') | join(' ')) | lower %}
+  <tr class="entry-row{{ ' running' if r.running }}"
+      data-customer-id="{{ c.id }}"
+      data-customer="{{ c.name|lower }}"
+      data-projects="{{ projnames }}"
+      {% if r.running %}data-entry="{{ r.running.id }}" data-elapsed="{{ r.running_elapsed }}" data-paused="{{ '1' if r.running_paused else '0' }}"{% endif %}>
+    <td class="c-customer">{{ c.name }}
+      {% if r.today_secs %}<span class="today">heute {{ r.today_secs|hms }}</span>{% endif %}
+    </td>
+
+    {% if r.running %}
+      <td class="c-project"><strong>{{ r.running_project.name if r.running_project else '—' }}</strong></td>
+      <td class="c-rate">{{ money(r.running.rate) }}</td>
+      <td class="c-task"><input type="text" class="task-input" value="{{ r.running.task }}" readonly></td>
+      <td class="c-action">
+        <span class="elapsed{{ ' paused' if r.running_paused }}" data-elapsed="{{ r.running_elapsed }}">{{ r.running_elapsed|hms }}</span>
+        {% if r.running_paused %}
+          <span class="pause-tag" title="Pausiert">❚❚ Pause{% if r.running_paused_min %} {{ r.running_paused_min }} Min{% endif %}</span>
+          <button class="btn resume" data-act="resume">▶ Weiter</button>
+        {% else %}
+          <button class="btn ghost pause" data-act="pause">❚❚ Pause</button>
+          {% if r.running_paused_min %}<span class="pause-tag" title="Bisher pausiert">{{ r.running_paused_min }} Min Pause</span>{% endif %}
+        {% endif %}
+        <button class="btn stop" data-act="stop">■ Stop</button>
+        {% set rp = r.running_project %}
+        {% if rp and rp.budget and rp.budget > 0 %}
+        <span class="budget-mini" data-budget="{{ rp.budget }}" data-used="{{ proj_used.get(rp.id, 0) }}">
+          <span class="bar"><span></span></span><span class="bm-label"></span></span>
+        {% endif %}
+      </td>
+    {% else %}
+      <td class="c-project">
+        <select class="project-select">
+          <option value="">{{ '— Projekt wählen —' if r.projects else '— noch kein Projekt —' }}</option>
+          {% for p in r.projects %}
+            <option value="{{ p.id }}" data-rate="{{ '%.2f'|format(p.rate) }}"
+                    data-rate-id="{{ p.default_rate_id or '' }}"
+                    data-budget="{{ p.budget or 0 }}" data-used="{{ proj_used.get(p.id, 0) }}"
+                    {{ 'selected' if p.id==r.last_project_id }}>{{ p.name }}</option>
+          {% endfor %}
+          <option value="__new">＋ Neues Projekt…</option>
+        </select>
+      </td>
+      <td class="c-rate">
+        <select class="rate-select">{{ rate_options(rates, sel_amount=r.last_rate) }}</select>
+      </td>
+      <td class="c-task">
+        <span class="task-cell">
+          <input type="text" class="task-input" placeholder="Aufgabe…" value="{{ r.last_task or '' }}">
+          {% if rectasks %}<button type="button" class="task-pick" title="Wiederkehrende Tätigkeit wählen">▾</button>{% endif %}
+        </span>
+      </td>
+      <td class="c-action">
+        <span class="elapsed" data-elapsed="0">00:00:00</span>
+        <button class="btn primary start" data-act="start">▶ Start</button>
+        <button class="btn ghost manual-btn" data-act="manual" title="Zeit nachtragen">+ Zeit</button>
+        <span class="budget-mini hidden"><span class="bar"><span></span></span><span class="bm-label"></span></span>
+      </td>
+    {% endif %}
+  </tr>
+{% endmacro %}

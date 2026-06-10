@@ -1,0 +1,77 @@
+<dialog id="help-modal" class="help-modal">
+  <div class="modal-card help-card">
+    <div class="help-head">
+      <h3>Anleitung &amp; Hilfe</h3>
+      <button type="button" class="help-close" value="close" aria-label="Schließen">✕</button>
+    </div>
+
+    <div class="help-body">
+      <section>
+        <h4>⏱ Erfassen</h4>
+        <p>Die Startseite zeigt alle Kunden als Zeilen. Pro Zeile wählst du Projekt, Stundensatz und Aufgabe und startest dann die Zeit.</p>
+        <ul>
+          <li><strong>Start:</strong> Startet einen laufenden Timer für die gewählte Zeile. Die Zeit läuft live mit.</li>
+          <li><strong>Stop:</strong> Beendet den Timer und speichert die Buchung. Die Netto-Zeit wird gemäß der eingestellten Rundung (Einstellungen) auf den nächsten Block aufgerundet.</li>
+          <li><strong>Pause / Weiter:</strong> Hält den Timer an, ohne die Buchung zu beenden. „Weiter" setzt dieselbe Buchung fort. Die Pausenzeit wird von der Arbeitszeit abgezogen. Jede Pause &gt; 0 wird auf mindestens 1 Minute aufgerundet.</li>
+          <li><strong>+ Zeit (nachtragen):</strong> Buchung manuell mit Datum, Von/Bis und Aufgabe anlegen — z.&nbsp;B. für vergessene Zeiten.</li>
+          <li><strong>Budget-Balken:</strong> Hat ein Projekt ein Budget, zeigt ein kleiner Balken den Verbrauch. Bei Erreichen des Schwellwerts erscheint beim Laden eine Warnung.</li>
+          <li><strong>Sortierung:</strong> Oben stehen die zuletzt genutzten Kunden (★), darunter alle übrigen alphabetisch. Startest du einen Timer, rutscht der Kunde automatisch nach oben.</li>
+          <li><strong>Suche:</strong> Über die Suchfelder filterst du nach Kunde oder Projekt.</li>
+        </ul>
+      </section>
+
+      <section class="help-highlight">
+        <h4>▶ Timer-Verhalten: mehrere Buchungen</h4>
+        <ul>
+          <li><strong>Es läuft immer nur EIN Timer aktiv.</strong> Startest du eine neue Buchung, während eine andere <em>läuft</em>, wird die laufende automatisch gestoppt und korrekt gebucht — du musst sie nicht erst manuell stoppen. Das spart Zeit.</li>
+          <li><strong>Pausierte Buchungen bleiben erhalten.</strong> Wenn du eine Buchung A <em>pausierst</em> und dann eine andere Buchung B startest, wird A <em>nicht</em> beendet — sie bleibt pausiert. So kannst du eine kurze Unterbrechung dazwischenschieben.</li>
+          <li><strong>Zurück zur pausierten Buchung:</strong> Drückst du bei A auf „Weiter", wird ein gerade laufendes B automatisch gestoppt/gebucht und A läuft als <em>eine</em> Buchung weiter.</li>
+          <li><strong>Vorteil:</strong> Eine kurz unterbrochene Tätigkeit bleibt eine einzige Buchung und wird nur <em>einmal</em> gerundet — keine doppelte Aufrundung durch zwei getrennte Buchungen.</li>
+          <li>Das alles gilt <strong>pro Nutzer</strong> — Timer anderer Mitarbeiter bleiben unberührt. Im Banner „Jetzt aktiv" siehst du alle laufenden/pausierten Timer (❚❚ = pausiert).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4>👥 Kunden &amp; Projekte</h4>
+        <ul>
+          <li>Kunden und je Kunde beliebig viele Projekte anlegen. Jedes Projekt hat einen Standard-Stundensatz und optional ein Stunden-Budget.</li>
+          <li><strong>Aufklappen:</strong> Über den Pfeil vor dem Projektnamen siehst du alle Buchungen des Projekts.</li>
+          <li><strong>Bearbeiten/Löschen:</strong> Einzelne Buchungen lassen sich direkt in der Liste ändern oder entfernen. Beim Bearbeiten kannst du auch die <strong>Pause</strong> anpassen.</li>
+          <li><strong>Suche/Filter</strong> hilft, Kunden oder Projekte schnell zu finden.</li>
+          <li>Nicht mehr benötigte Kunden/Projekte können archiviert werden — bestehende Buchungen bleiben erhalten.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4>🧾 Abrechnen</h4>
+        <ul>
+          <li><strong>Filter:</strong> Kunde, Projekt, Zeitraum (Von/Bis) und Art (Zwischen-/Endrechnung) wählen, dann <strong>Vorschau</strong> — die offenen Buchungen werden mit Summe und MwSt angezeigt.</li>
+          <li><strong>Aufstellung erstellen &amp; PDF:</strong> Erzeugt den Leistungsnachweis als PDF und markiert die enthaltenen Buchungen als abgerechnet.</li>
+          <li><strong>Offene Salden:</strong> Übersicht aller noch nicht abgerechneten Beträge pro Kunde mit direktem „Abrechnen →".</li>
+          <li><strong>Erstellte Aufstellungen:</strong> PDF erneut laden, als CSV exportieren oder per „Löschen" stornieren — beim Stornieren werden die Buchungen wieder offen.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4>📋 Protokoll</h4>
+        <p>Lückenlose Aktivitätshistorie (Start/Stop/Pause, Anlegen, Ändern, Löschen, Abrechnen …). Über Nutzer und Zeitraum filterbar.</p>
+      </section>
+
+      <section>
+        <h4>⚙ Einstellungen</h4>
+        <ul>
+          <li><strong>Firma &amp; Logo:</strong> Name und Logo erscheinen auf PDFs und in der Kopfzeile.</li>
+          <li><strong>Rundung:</strong> Auf wie viele Minuten die Arbeitszeit beim Stoppen aufgerundet wird.</li>
+          <li><strong>Budget-Warnung:</strong> Ab welchem Prozentsatz des Projektbudgets gewarnt wird.</li>
+          <li><strong>Stundensätze</strong> und <strong>wiederkehrende Tätigkeiten</strong> zentral pflegen (letztere erscheinen als Auswahl ▾ beim Aufgaben-Feld).</li>
+          <li><strong>Nutzer</strong> verwalten und <strong>Backup</strong> (ZIP aus Datenbank + Uploads) herunterladen.</li>
+          <li><strong>Design:</strong> Farbe und hell/dunkel pro Nutzer einstellbar.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="row end help-foot">
+      <button type="button" class="btn primary help-close" value="close">Verstanden</button>
+    </div>
+  </div>
+</dialog>

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Anmelden · Zeiterfassung{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <h1>Wer arbeitet?</h1>
+  <p class="muted">Nutzer wählen — kein Passwort nötig.</p>
+
+  {% if users %}
+  <form method="post" action="{{ url_for('auth.do_login') }}">
+    <div class="user-grid">
+      {% for u in users %}
+        <button type="submit" name="user_id" value="{{ u.id }}" class="user-card">
+          <span class="avatar" style="background: {{ u.color }}">{{ u.name[:2]|upper }}</span>
+          <span>{{ u.name }}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </form>
+  {% else %}
+  <p class="muted">Noch keine Nutzer — leg unten den ersten an.</p>
+  {% endif %}
+
+  <details class="adduser">
+    <summary>+ Neuen Nutzer anlegen</summary>
+    <form method="post" action="{{ url_for('auth.add_user') }}" class="row">
+      <input name="name" placeholder="Name" required>
+      <button class="btn primary" type="submit">Anlegen &amp; starten</button>
+    </form>
+  </details>
+</div>
+{% endblock %}

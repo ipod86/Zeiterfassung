@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Protokoll{% endblock %}
+{% block content %}
+<h1>Protokoll</h1>
+
+{% if stats %}
+<div class="card">
+  <h2>Stunden je Mitarbeiter (letzte 7 Tage)</h2>
+  <div class="bars">
+    {% set maxh = stats[0].hours if stats and stats[0].hours > 0 else 1 %}
+    {% for s in stats %}
+    <div class="bar-row">
+      <span class="bar-label">{{ s.name }}</span>
+      <span class="bar"><span style="width: {{ (s.hours / maxh * 100)|round(0) }}%; background: {{ s.color }}"></span></span>
+      <span class="bar-val">{{ s.hours }} h</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<form method="get" class="card filterbar">
+  <div class="row wrap">
+    <label>Nutzer
+      <select name="user_id">
+        <option value="">alle</option>
+        {% for u in users %}<option value="{{ u.id }}" {{ 'selected' if u.id==user_id }}>{{ u.name }}</option>{% endfor %}
+      </select></label>
+    <label>Von <input type="date" name="from" value="{{ dfrom }}"></label>
+    <label>Bis <input type="date" name="to" value="{{ dto }}"></label>
+    <button class="btn primary">Filtern</button>
+  </div>
+</form>
+
+<div class="card">
+  <table class="grid small">
+    <thead><tr><th>Zeitpunkt</th><th>Nutzer</th><th>Aktion</th><th>Detail</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="nowrap">{{ r.created_at }}</td>
+        <td>{{ r.user_name or '—' }}</td>
+        <td><span class="status">{{ r.action }}</span></td>
+        <td>{{ r.details or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Noch keine Einträge.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

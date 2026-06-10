@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Erfassen · Zeiterfassung{% endblock %}
+
+{% from "_entry_row.html" import rate_options with context %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Erfassen</h1>
+</div>
+
+<div id="active-banner-wrap">
+{% include "_active_banner.html" %}
+</div>
+
+<table class="grid" id="grid" data-warn-pct="{{ warn_pct }}">
+  <thead>
+    <tr>
+      <th>Kunde</th><th>Projekt</th><th>Stundensatz</th><th>Aufgabe</th><th>Stempeln</th>
+    </tr>
+    <tr class="search-row">
+      <th><input data-col="customer" placeholder="Kunde suchen…"></th>
+      <th><input data-col="project" placeholder="Projekt…"></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="grid-body">
+    {% include "_grid_body.html" %}
+  </tbody>
+</table>
+
+<!-- new project modal (per customer) -->
+<dialog id="np-modal">
+  <form method="dialog" class="modal-card">
+    <h3>Neues Projekt</h3>
+    <p id="np-customer" class="muted"></p>
+    <label>Projektname <input type="text" id="np-name" placeholder="Projektname"></label>
+    <label>Standard-Satz <select id="np-rate">{{ rate_options(rates) }}</select></label>
+    <div class="row end">
+      <button class="btn ghost" value="cancel">Abbrechen</button>
+      <button class="btn primary" id="np-save" type="button">Anlegen &amp; wählen</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- manual entry modal -->
+<dialog id="manual-modal">
+  <form method="dialog" class="modal-card">
+    <h3>Zeit nachtragen</h3>
+    <p id="manual-project" class="muted"></p>
+    <label>Datum <input type="date" id="m-date"></label>
+    <div class="row">
+      <label>Von <input type="time" id="m-start"></label>
+      <label>Bis <input type="time" id="m-end"></label>
+    </div>
+    <label>Aufgabe
+      <span class="task-cell">
+        <input type="text" id="m-task" class="task-input" placeholder="Aufgabe…">
+        {% if recurring_tasks %}<button type="button" class="task-pick" title="Wiederkehrende Tätigkeit wählen">▾</button>{% endif %}
+      </span>
+    </label>
+    <div class="row end">
+      <button class="btn ghost" value="cancel">Abbrechen</button>
+      <button class="btn primary" id="m-save" type="button">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+{% if recurring_tasks %}
+<ul id="rectask-menu" class="task-menu hidden">
+  {% for t in recurring_tasks %}<li data-text="{{ t.text }}">{{ t.text }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if budget_alerts %}
+<dialog id="budget-alert">
+  <form method="dialog" class="modal-card">
+    <h3>⚠ Budget-Warnung</h3>
+    <p class="muted">Folgende Projekte haben den Schwellwert von {{ warn_pct|round|int }} % erreicht:</p>
+    <ul class="budget-alert-list">
+      {% for a in budget_alerts %}
+      <li data-key="{{ a.id }}:{{ a.stage }}">
+        <strong>{{ a.customer }} / {{ a.name }}</strong> — {{ a.used_h }} h von {{ a.budget }} h
+        <span class="ba-pct {{ 'over' if a.stage >= 2 }}">{{ a.pct }} %</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="row end"><button class="btn primary" id="ba-ok" value="ok">Verstanden</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

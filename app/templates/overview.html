@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}Kunden &amp; Projekte{% endblock %}
+
+{% macro rate_select(name, sel_id) %}
+  <select name="{{ name }}">
+    <option value="">— kein Satz —</option>
+    {% for rt in rates %}
+      <option value="{{ rt.id }}" {{ 'selected' if rt.id==sel_id }}>{{ rt.label }} – {{ money(rt.amount) }}</option>
+    {% endfor %}
+  </select>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Kunden &amp; Projekte</h1>
+  <div class="row">
+    <input id="cust-search" placeholder="Kunde/Projekt suchen…" style="min-width:220px">
+    <a class="btn ghost" href="{{ url_for('customers.overview', archiviert=0 if show_archived else 1) }}">
+      {{ 'Aktive zeigen' if show_archived else 'Archiv zeigen' }}
+    </a>
+    <button class="btn primary" onclick="document.getElementById('new-customer').showModal()">+ Kunde</button>
+  </div>
+</div>
+
+<div id="cust-list">
+{% for c in customers %}
+{% set items = by_customer.get(c.id, []) %}
+{% set open_amount = items | sum(attribute='agg.open_amount') %}
+{% set projnames = (items | map(attribute='p.name') | join(' ')) | lower %}
+<section class="card cust" data-search="{{ c.name|lower }} {{ projnames }}">
+  <details>
+    <summary class="cust-summary">
+      <span class="cust-title">{{ c.name }}{% if c.archived %} <span class="badge">archiviert</span>{% endif %}</span>
+      <span class="cust-meta">{{ items|length }} Projekt(e){% if open_amount %} · offen {{ money(open_amount) }}{% endif %}</span>
+    </summary>
+
+    <div class="cust-body">
+      {% if c.contact or c.email or c.phone or c.vat_id %}
+      <p class="muted small">
+        {{ c.contact }}{% if c.contact %} · {% endif %}{{ c.email }} {{ c.phone }}
+        {% if c.vat_id %}· USt: {{ c.vat_id }}{% endif %}
+      </p>
+      {% endif %}
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn ghost" onclick="document.getElementById('np-{{ c.id }}').showModal()">+ Projekt</button>
+        <button class="btn ghost" onclick="document.getElementById('ec-{{ c.id }}').showModal()">Kunde bearbeiten</button>
+        <a class="btn ghost" href="{{ url_for('customers.customer_open_pdf', cid=c.id, fname='Offene_Buchungen_' ~ (c.name|safe_filename)) }}" target="_blank">Offene Buchungen (PDF)</a>
+        <a class="btn ghost" href="{{ url_for('customers.customer_open_csv', cid=c.id) }}">CSV</a>
+        {% if c.archived %}
+        <form method="post" action="{{ url_for('customers.customer_restore', cid=c.id) }}">
+          <button class="btn">Reaktivieren</button></form>
+        {% else %}
+        <form method="post" action="{{ url_for('customers.customer_delete', cid=c.id) }}"
+              onsubmit="return confirm('Kunde löschen/archivieren?')">
+          <button class="btn danger">Löschen</button></form>
+        {% endif %}
+      </div>
+
+      <table class="grid small">
+        <thead><tr><th>Projekt</th><th>Satz</th><th>Offen</th><th>Budget</th><th></th></tr></thead>
+        <tbody>
+        {% for item in items %}
+          {% set p = item.p %}
+          <tr>
+            <td>
+              {% if item.bookings %}
+              <button type="button" class="proj-toggle" data-target="pd-{{ p.id }}"
+                      title="Buchungen anzeigen"><span class="chev">▸</span></button>
+              {% else %}<span class="proj-toggle-spacer"></span>{% endif %}
+              {{ p.name }}
+              {% if p.status=='abgeschlossen' %}<span class="badge">abgeschlossen</span>{% endif %}
+              {% if p.archived %}<span class="badge">arch.</span>{% endif %}
+            </td>
+            <td>{{ money(p.rate) }}</td>
+            <td>{{ item.agg.open_secs|hm }} · {{ money(item.agg.open_amount) }}</td>
+            <td>
+              {% if p.budget and p.budget > 0 %}
+                {% set used_h = item.agg.secs / 3600 %}
+                {% set pct = used_h / p.budget * 100 %}
+                {% set cls = 'over' if pct > 100 else ('warn' if pct >= 80 else 'okbar') %}
+                <div class="budget" title="{{ '%.1f'|format(used_h) }} von {{ '%.0f'|format(p.budget) }} h">
+                  <div class="bar"><span class="{{ cls }}" style="width:{{ [pct, 100]|min }}%"></span></div>
+                  <span class="budget-val {{ 'over' if pct > 100 }}">{{ '%.0f'|format(used_h) }}/{{ '%.0f'|format(p.budget) }} h</span>
+                </div>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td class="row">
+              <button class="btn ghost" onclick="document.getElementById('ep-{{ p.id }}').showModal()">Edit</button>
+              <a class="btn ghost" href="{{ url_for('customers.project_open_pdf', pid=p.id, fname='Offene_Buchungen_' ~ (c.name|safe_filename) ~ '_' ~ (p.name|safe_filename)) }}" target="_blank" title="Offene Buchungen als PDF">PDF</a>
+              <a class="btn ghost" href="{{ url_for('customers.project_open_csv', pid=p.id) }}">CSV</a>
+              {% if p.archived %}
+              <form method="post" action="{{ url_for('customers.project_restore', pid=p.id) }}">
+                <button class="btn">↺</button></form>
+              {% else %}
+              <form method="post" action="{{ url_for('customers.project_delete', pid=p.id) }}"
+                    onsubmit="return confirm('Projekt löschen/archivieren?')">
+                <button class="btn danger">✕</button></form>
+              {% endif %}
+            </td>
+          </tr>
+          {% if item.bookings %}
+          <tr class="proj-detail-row hidden" id="pd-{{ p.id }}">
+            <td colspan="5" class="proj-detail-cell">
+                <table class="grid small bookings">
+                  <thead><tr><th>Datum</th><th>Zeit</th><th>Mitarbeiter</th><th>Aufgabe</th>
+                    <th>Std.</th><th>Satz</th><th>Betrag</th><th>Status</th><th></th></tr></thead>
+                  <tbody>
+                  {% for b in item.bookings %}
+                    <tr>
+                      <td class="nowrap">{{ b.day }}</td>
+                      <td class="nowrap">{{ b.start_hm }}{% if b.end_hm %}–{{ b.end_hm }}{% endif %}{% if b.paused_min %} <span class="pause-tag">{{ b.paused_min }} Min Pause</span>{% endif %}</td>
+                      <td>{{ b.user_name }}</td>
+                      <td>{{ b.task }}</td>
+                      <td>{{ b.secs|hm }}</td>
+                      <td>{{ money(b.rate) }}</td>
+                      <td>{{ money(b.amount) }}</td>
+                      <td>
+                        {% if b.running %}<span class="status offen">läuft</span>
+                        {% elif b.billed %}<span class="badge">abgerechnet</span>
+                        {% else %}<span class="status offen">offen</span>{% endif %}
+                      </td>
+                      <td class="row">
+                        {% if not b.billed and not b.running %}
+                        <button class="btn ghost btn-edit-entry"
+                                data-id="{{ b.id }}" data-date="{{ b.day }}"
+                                data-start="{{ b.start_hm }}" data-end="{{ b.end_hm }}"
+                                data-task="{{ b.task }}" data-rate="{{ '%.2f'|format(b.rate) }}"
+                                data-pause="{{ b.paused_min }}">Edit</button>
+                        <button class="btn danger btn-del-entry" data-id="{{ b.id }}" title="Buchung löschen">✕</button>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+            </td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+        {% if not items %}
+          <tr><td colspan="5" class="muted">Noch keine Projekte.</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <dialog id="np-{{ c.id }}"><form method="post" action="{{ url_for('customers.project_new') }}" class="modal-card">
+    <h3>Projekt für {{ c.name }}</h3>
+    <input type="hidden" name="customer_id" value="{{ c.id }}">
+    <label>Name <input name="name" required></label>
+    <div class="row">
+      <label>Standard-Satz {{ rate_select('default_rate_id', none) }}</label>
+      <label>Budget (h) <input name="budget" type="number" step="0.01"></label>
+    </div>
+    <label>Farbe <input name="color" type="color" value="#4f46e5"></label>
+    <label>Beschreibung <textarea name="description"></textarea></label>
+    <div class="row end"><button class="btn ghost" type="button" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button class="btn primary">Anlegen</button></div>
+  </form></dialog>
+
+  <dialog id="ec-{{ c.id }}"><form method="post" action="{{ url_for('customers.customer_edit', cid=c.id) }}" class="modal-card">
+    <h3>Kunde bearbeiten</h3>
+    <div class="row">
+      <label>Name <input name="name" value="{{ c.name }}" required></label>
+      <label>Kundennr. <input name="customer_no" value="{{ c.customer_no or '' }}"></label>
+    </div>
+    <label>Ansprechpartner <input name="contact" value="{{ c.contact or '' }}"></label>
+    <label>Adresse <textarea name="address">{{ c.address or '' }}</textarea></label>
+    <div class="row">
+      <label>E-Mail <input name="email" value="{{ c.email or '' }}"></label>
+      <label>Telefon <input name="phone" value="{{ c.phone or '' }}"></label>
+    </div>
+    <label>USt-IdNr. <input name="vat_id" value="{{ c.vat_id or '' }}"></label>
+    <label>Notiz <textarea name="note">{{ c.note or '' }}</textarea></label>
+    <div class="row end"><button class="btn ghost" type="button" onclick="this.closest('dialog').close()">Abbrechen</button>
+      <button class="btn primary">Speichern</button></div>
+  </form></dialog>
+
+  {% for item in items %}
+    {% set p = item.p %}
+    <dialog id="ep-{{ p.id }}"><form method="post" action="{{ url_for('customers.project_edit', pid=p.id) }}" class="modal-card">
+      <h3>Projekt bearbeiten</h3>
+      <label>Name <input name="name" value="{{ p.name }}" required></label>
+      <div class="row">
+        <label>Standard-Satz {{ rate_select('default_rate_id', p.default_rate_id) }}</label>
+        <label>Budget (h) <input name="budget" type="number" step="0.01" value="{{ p.budget or '' }}"></label>
+      </div>
+      <label>Status
+        <select name="status">
+          <option value="offen" {{ 'selected' if p.status=='offen' }}>offen</option>
+          <option value="abgeschlossen" {{ 'selected' if p.status=='abgeschlossen' }}>abgeschlossen</option>
+        </select></label>
+      <label>Farbe <input name="color" type="color" value="{{ p.color or '#4f46e5' }}"></label>
+      <label>Beschreibung <textarea name="description">{{ p.description or '' }}</textarea></label>
+      <div class="row end"><button class="btn ghost" type="button" onclick="this.closest('dialog').close()">Abbrechen</button>
+        <button class="btn primary">Speichern</button></div>
+    </form></dialog>
+  {% endfor %}
+</section>
+{% else %}
+<p class="muted pad">Noch keine Kunden angelegt.</p>
+{% endfor %}
+</div>
+<p id="cust-noresult" class="muted pad hidden">Keine Treffer.</p>
+
+<dialog id="edit-entry"><form class="modal-card" id="edit-entry-form">
+  <h3>Buchung bearbeiten</h3>
+  <input type="hidden" id="ee-id">
+  <label>Datum <input type="date" id="ee-date"></label>
+  <div class="row">
+    <label>Von <input type="time" id="ee-start"></label>
+    <label>Bis <input type="time" id="ee-end"></label>
+    <label>Pause (Min) <input type="number" id="ee-pause" min="0" step="1" value="0" style="width:90px"></label>
+  </div>
+  <label>Stundensatz
+    <select id="ee-rate">
+      {% for rt in rates %}<option value="{{ '%.2f'|format(rt.amount) }}">{{ rt.label }} – {{ money(rt.amount) }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Aufgabe
+    <span class="task-cell">
+      <input type="text" id="ee-task" class="task-input">
+      {% if recurring_tasks %}<button type="button" class="task-pick" title="Wiederkehrende Tätigkeit wählen">▾</button>{% endif %}
+    </span>
+  </label>
+  <div class="row end">
+    <button class="btn ghost" type="button" onclick="this.closest('dialog').close()">Abbrechen</button>
+    <button class="btn primary" type="button" id="ee-save">Speichern</button>
+  </div>
+</form></dialog>
+
+<dialog id="new-customer"><form method="post" action="{{ url_for('customers.customer_new') }}" class="modal-card">
+  <h3>Neuer Kunde</h3>
+  <div class="row">
+    <label>Name <input name="name" required></label>
+    <label>Kundennr. <input name="customer_no"></label>
+  </div>
+  <label>Ansprechpartner <input name="contact"></label>
+  <label>Adresse <textarea name="address"></textarea></label>
+  <div class="row">
+    <label>E-Mail <input name="email"></label>
+    <label>Telefon <input name="phone"></label>
+  </div>
+  <label>USt-IdNr. <input name="vat_id"></label>
+  <label>Notiz <textarea name="note"></textarea></label>
+  <div class="row end"><button class="btn ghost" type="button" onclick="this.closest('dialog').close()">Abbrechen</button>
+    <button class="btn primary">Anlegen</button></div>
+</form></dialog>
+
+{% if recurring_tasks %}
+<ul id="rectask-menu" class="task-menu hidden">
+  {% for t in recurring_tasks %}<li data-text="{{ t.text }}">{{ t.text }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

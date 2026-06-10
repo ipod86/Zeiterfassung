@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Abrechnen{% endblock %}
+{% block content %}
+<h1>Abrechnen</h1>
+
+<form method="get" action="{{ url_for('billing.index') }}" class="card filterbar">
+  <div class="row wrap">
+    <label>Kunde
+      <select name="customer_id" onchange="this.form.submit()">
+        <option value="">— wählen —</option>
+        {% for c in customers %}
+          <option value="{{ c.id }}" {{ 'selected' if c.id==customer_id }}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Projekt
+      <select name="project_id">
+        <option value="">alle</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}" {{ 'selected' if p.id==project_id }}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Von <input type="date" name="from" value="{{ dfrom }}"></label>
+    <label>Bis <input type="date" name="to" value="{{ dto }}"></label>
+    <label>Art
+      <select name="type">
+        <option value="zwischen" {{ 'selected' if typ=='zwischen' }}>Zwischenrechnung</option>
+        <option value="end" {{ 'selected' if typ=='end' }}>Endrechnung</option>
+      </select>
+    </label>
+    <button class="btn primary">Vorschau</button>
+  </div>
+</form>
+
+{% if customer %}
+  <div class="card">
+    <div class="page-head">
+      <h2>{{ entries|length }} Buchung(en) · {{ customer.name }}</h2>
+      {% if entries %}
+      <form method="post" action="{{ url_for('billing.create') }}"
+            onsubmit="return confirm('Aufstellung erstellen? Buchungen werden als abgerechnet markiert.')">
+        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+        <input type="hidden" name="project_id" value="{{ project_id or '' }}">
+        <input type="hidden" name="from" value="{{ dfrom }}">
+        <input type="hidden" name="to" value="{{ dto }}">
+        <input type="hidden" name="type" value="{{ typ }}">
+        <button class="btn primary">Aufstellung erstellen &amp; PDF</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if entries %}
+    <table class="grid small">
+      <thead><tr><th>Datum</th><th>Projekt</th><th>Mitarbeiter</th><th>Aufgabe</th>
+        <th>Stunden</th><th>Satz</th><th>Betrag</th></tr></thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td>{{ e.day }}</td><td>{{ e.project_name }}</td><td>{{ e.user_name }}</td>
+          <td>{{ e.task }}</td><td>{{ e.secs|hm }}</td><td>{{ money(e.rate) }}</td>
+          <td>{{ money(e.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><td colspan="6" class="r">Zwischensumme</td><td>{{ money(subtotal) }}</td></tr>
+        <tr><td colspan="6" class="r">zzgl. {{ tax_rate }}% MwSt</td><td>{{ money(tax_amount) }}</td></tr>
+        <tr class="total"><td colspan="6" class="r">Gesamt</td><td>{{ money(total) }}</td></tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="muted">Keine offenen Buchungen für diese Auswahl.</p>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="page-head">
+    <h2>Offene Salden</h2>
+    {% if open_balances %}<span class="cust-meta">Gesamt offen: <strong>{{ money(open_total) }}</strong></span>{% endif %}
+  </div>
+  {% if open_balances %}
+  <table class="grid small">
+    <thead><tr><th>Kunde</th><th>Offene Stunden</th><th>Offener Saldo</th><th></th></tr></thead>
+    <tbody>
+      {% for o in open_balances %}
+      <tr>
+        <td>{{ o.name }}</td>
+        <td>{{ o.secs|hm }}</td>
+        <td>{{ money(o.amount) }}</td>
+        <td class="r"><a class="btn ghost" href="{{ url_for('billing.index', customer_id=o.id) }}">Abrechnen →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total"><td class="r" colspan="2">Gesamt</td><td>{{ money(open_total) }}</td><td></td></tr>
+    </tfoot>
+  </table>
+  {% else %}
+  <p class="muted">Keine offenen Salden — alle Buchungen sind abgerechnet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Erstellte Aufstellungen</h2>
+  <table class="grid small">
+    <thead><tr><th>Kunde</th><th>Umfang</th><th>Art</th><th>Datum</th><th>Gesamt</th>
+      <th>von</th><th></th></tr></thead>
+    <tbody>
+      {% for i in invoices %}
+      <tr>
+        <td>{{ i.customer_name }}</td>
+        <td>{{ i.project_name or 'Alle Projekte' }}</td>
+        <td>{{ 'Zwischenstand' if i.type=='zwischen' else 'Abschluss' }}</td>
+        <td>{{ i.created_at }}</td><td>{{ money(i.total) }}</td><td>{{ i.by_name }}</td>
+        <td class="row">
+          {% set dl = 'Leistungsnachweis_' ~ (i.customer_name|safe_filename) ~ (('_' ~ (i.project_name|safe_filename)) if i.project_name else '') ~ '_' ~ i.created_at[:10] %}
+          <a class="btn ghost" href="{{ url_for('billing.pdf', invoice_id=i.id, fname=dl) }}" target="_blank">PDF</a>
+          <a class="btn ghost" href="{{ url_for('billing.csv_export', invoice_id=i.id, fname=dl) }}">CSV</a>
+          <form method="post" action="{{ url_for('billing.storno', invoice_id=i.id) }}"
+                onsubmit="return confirm('Aufstellung löschen? Buchungen werden wieder offen.')">
+            <button class="btn danger">Löschen</button></form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Noch keine Aufstellungen.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

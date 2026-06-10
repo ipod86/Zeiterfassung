@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de" data-theme="{{ user_theme or 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Zeiterfassung{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>:root { --primary: {{ settings.theme_primary or '#4f46e5' }}; }</style>
+</head>
+<body>
+{% if current_user_id %}
+<header class="topbar">
+  <div class="brand">
+    {% if settings.logo_file %}
+      <img src="{{ url_for('uploads', filename=settings.logo_file) }}" alt="Logo" class="logo"
+           {% if settings.logo_w and settings.logo_h %}width="{{ settings.logo_w }}" height="{{ settings.logo_h }}"{% endif %}>
+    {% endif %}
+    <span class="brand-name">{{ settings.company_name or 'Zeiterfassung' }}</span>
+  </div>
+  <nav class="mainnav">
+    <a href="{{ url_for('main.index') }}" class="{{ 'active' if request.endpoint=='main.index' }}">Erfassen</a>
+    <a href="{{ url_for('customers.overview') }}" class="{{ 'active' if request.blueprint=='customers' }}">Kunden &amp; Projekte</a>
+    <a href="{{ url_for('billing.index') }}" class="{{ 'active' if request.blueprint=='billing' }}">Abrechnen</a>
+    <a href="{{ url_for('log.index') }}" class="{{ 'active' if request.blueprint=='log' }}">Protokoll</a>
+    <a href="{{ url_for('settings.index') }}" class="{{ 'active' if request.blueprint=='settings' }}">Einstellungen</a>
+  </nav>
+  <div class="userbox">
+    <span class="who">{{ current_user_name }}</span>
+    <a href="{{ url_for('auth.logout') }}" class="btn-link">Wechseln</a>
+    <button type="button" id="feedback-btn" class="help-btn" title="Bug oder Feature-Wunsch melden" aria-label="Feedback">🐞</button>
+    <button type="button" id="help-btn" class="help-btn" title="Anleitung &amp; Hilfe" aria-label="Hilfe">?</button>
+  </div>
+</header>
+
+{% include "_help_modal.html" %}
+{% include "_feedback_modal.html" %}
+{% endif %}
+
+<main class="content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flashes">
+        {% for cat, msg in messages %}
+          <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

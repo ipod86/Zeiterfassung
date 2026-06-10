@@ -1,0 +1,19 @@
+# --- Laufzeit-/Live-Daten (NICHT hochladen: enthält echte Kundendaten) ---
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# --- Python venv & Bytecode ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Editor / OS ---
+.claude/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

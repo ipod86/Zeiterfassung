@@ -1,0 +1,13 @@
+{% if now_active %}
+<div class="active-banner" id="active-banner">
+  <strong>Jetzt aktiv:</strong>
+  {% for a in now_active %}
+    <span class="active-chip" style="border-color: {{ a.color }}">
+      <span class="dot" style="background: {{ a.color }}"></span>
+      {{ a.user_name }} · {{ a.customer_name }} / {{ a.project_name }}
+      <span class="chip-time{{ ' paused' if a.paused }}" data-elapsed="{{ a.elapsed }}" data-paused="{{ '1' if a.paused else '0' }}">{{ a.elapsed|hms }}</span>
+      {% if a.paused %}<span class="pause-tag">❚❚</span>{% endif %}
+    </span>
+  {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen{% endblock %}
+{% block content %}
+<h1>Einstellungen</h1>
+
+<form method="post" action="{{ url_for('settings.save') }}" enctype="multipart/form-data" class="card">
+  <h2>Firmendaten (für Rechnungskopf)</h2>
+  <label>Firmenname <input name="company_name" value="{{ s.company_name }}"></label>
+  <label>Adresse <textarea name="company_address">{{ s.company_address }}</textarea></label>
+  <div class="row">
+    <label>E-Mail <input name="company_email" value="{{ s.company_email }}"></label>
+    <label>Telefon <input name="company_phone" value="{{ s.company_phone }}"></label>
+  </div>
+  <label>USt-IdNr. <input name="company_vat" value="{{ s.company_vat }}"></label>
+
+  <h2>Abrechnung</h2>
+  <div class="row wrap">
+    <label>Währung <input name="currency" value="{{ s.currency }}" style="width:60px"></label>
+    <label>MwSt % <input name="tax_rate" type="number" step="0.1" value="{{ s.tax_rate }}" style="width:80px"></label>
+    <label>Rundung (Min) <input name="rounding_minutes" type="number" min="0" value="{{ s.rounding_minutes }}" style="width:90px"></label>
+    <label>Budget-Warnung ab % <input name="budget_warn_pct" type="number" min="1" max="100" value="{{ s.budget_warn_pct }}" style="width:90px"></label>
+  </div>
+
+  <h2>Darstellung</h2>
+  <div class="row wrap">
+    <label>Akzentfarbe <input name="theme_primary" type="color" value="{{ s.theme_primary }}"></label>
+    <label>Modus (pro Nutzer)
+      <select name="theme_mode">
+        <option value="light" {{ 'selected' if user_theme=='light' }}>Hell</option>
+        <option value="dark" {{ 'selected' if user_theme=='dark' }}>Dunkel</option>
+      </select></label>
+  </div>
+  <div class="row">
+    <label>Logo {% if s.logo_file %}<img src="{{ url_for('uploads', filename=s.logo_file) }}" class="logo-preview">{% endif %}
+      <input type="file" name="logo" accept="image/*"></label>
+  </div>
+  <div class="row end">
+    {% if s.logo_file %}
+    <button class="btn ghost" formaction="{{ url_for('settings.remove_logo') }}" formnovalidate>Logo entfernen</button>
+    {% endif %}
+    <button class="btn primary">Speichern</button>
+  </div>
+</form>
+
+<div class="card">
+  <h2>Stundensätze (global)</h2>
+  <p class="muted small">Diese Sätze stehen bei jeder Buchung und als Projekt-Standard zur Auswahl.</p>
+  <table class="grid small">
+    <thead><tr><th>Bezeichnung</th><th>Betrag</th><th>Aktiv</th><th></th></tr></thead>
+    <tbody>
+      {% for rt in rates %}
+      <tr>
+        <form method="post" action="{{ url_for('settings.rate_edit', rid=rt.id) }}">
+        <td><input name="label" value="{{ rt.label }}"></td>
+        <td><input name="amount" type="number" step="0.01" value="{{ '%.2f'|format(rt.amount) }}" style="width:110px"></td>
+        <td><input name="active" type="checkbox" {{ 'checked' if rt.active }}></td>
+        <td class="row">
+          <button class="btn">Speichern</button>
+        </form>
+          <form method="post" action="{{ url_for('settings.rate_delete', rid=rt.id) }}"
+                onsubmit="return confirm('Satz löschen?')"><button class="btn danger">✕</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="{{ url_for('settings.rate_new') }}" class="row" style="margin-top:10px">
+    <input name="label" placeholder="z.B. Entwicklung">
+    <input name="amount" type="number" step="0.01" placeholder="Betrag" style="width:120px">
+    <button class="btn primary">+ Satz</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Wiederkehrende Tätigkeiten</h2>
+  <p class="muted small">Diese Texte lassen sich beim Buchen über das ▾ neben dem Aufgaben-Feld schnell auswählen.</p>
+  <table class="grid small">
+    <thead><tr><th>Tätigkeit</th><th>Aktiv</th><th></th></tr></thead>
+    <tbody>
+      {% for t in recurring_tasks %}
+      <tr>
+        <form method="post" action="{{ url_for('settings.rectask_edit', tid=t.id) }}">
+        <td><input name="text" value="{{ t.text }}"></td>
+        <td><input name="active" type="checkbox" {{ 'checked' if t.active }}></td>
+        <td class="row">
+          <button class="btn">Speichern</button>
+        </form>
+          <form method="post" action="{{ url_for('settings.rectask_delete', tid=t.id) }}"
+                onsubmit="return confirm('Tätigkeit löschen?')"><button class="btn danger">✕</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not recurring_tasks %}
+      <tr><td colspan="3" class="muted">Noch keine Tätigkeiten angelegt.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <form method="post" action="{{ url_for('settings.rectask_new') }}" class="row" style="margin-top:10px">
+    <input name="text" placeholder="z.B. Telefonat, Dokumentation…">
+    <button class="btn primary">+ Tätigkeit</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Nutzer</h2>
+  <table class="grid small">
+    <thead><tr><th>Name</th><th>Farbe</th><th>Aktiv</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <form method="post" action="{{ url_for('settings.user_edit', uid=u.id) }}">
+        <td><input name="name" value="{{ u.name }}"></td>
+        <td><input name="color" type="color" value="{{ u.color }}"></td>
+        <td><input name="active" type="checkbox" {{ 'checked' if u.active }}></td>
+        <td class="row"><button class="btn">Speichern</button>
+        </form>
+          <form method="post" action="{{ url_for('settings.user_delete', uid=u.id) }}"
+                onsubmit="return confirm('Nutzer löschen? Buchungen bleiben mit dem Namen erhalten.')">
+            <button class="btn danger">✕</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="{{ url_for('settings.user_new') }}" class="row" style="margin-top:10px">
+    <input name="name" placeholder="Neuer Nutzer">
+    <input name="color" type="color" value="#059669">
+    <button class="btn primary">+ Nutzer</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Datensicherung</h2>
+  <p class="muted small">Lädt die komplette Datenbank und alle hochgeladenen Dateien (Logo) als ZIP herunter.</p>
+  <a class="btn primary" href="{{ url_for('settings.backup') }}">Backup herunterladen (ZIP)</a>
+
+  <h3 style="margin-top:18px">Automatische tägliche Sicherung</h3>
+  <p class="muted small">Einmal pro Tag wird automatisch eine Sicherung im Ordner <code>data/backups/</code> angelegt; ältere als die eingestellte Aufbewahrung werden gelöscht.</p>
+  <form method="post" action="{{ url_for('settings.save') }}" class="row wrap" style="align-items:center; gap:8px">
+    <label>Aufbewahrung (Tage) <input name="backup_keep_days" type="number" min="1" max="365" value="{{ s.backup_keep_days }}" style="width:90px"></label>
+    <label>Uhrzeit (optional) <input name="backup_time" type="time" value="{{ s.backup_time }}" style="width:120px"></label>
+    <button class="btn">Speichern</button>
+  </form>
+  <p class="muted small" style="margin-top:6px">Uhrzeit leer = sichern, sobald der Server am Tag erstmals läuft. Mit fester Uhrzeit wird die Sicherung an oder nach diesem Zeitpunkt erstellt (bei ausgeschaltetem Rechner später nachgeholt).</p>
+  {% if auto_backups %}
+  <table class="grid small" style="margin-top:10px">
+    <thead><tr><th>Sicherung</th><th>Größe</th><th>Erstellt</th><th></th></tr></thead>
+    <tbody>
+      {% for b in auto_backups %}
+      <tr>
+        <td>{{ b.name }}</td>
+        <td>{{ (b.size / 1024) | round(1) }} KB</td>
+        <td>{{ b.mtime.strftime('%d.%m.%Y %H:%M') }}</td>
+        <td><a class="btn" href="{{ url_for('settings.backup_auto', name=b.name) }}">Herunterladen</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted small" style="margin-top:8px">Noch keine automatischen Sicherungen vorhanden.</p>
+  {% endif %}
+
+  <h3 style="margin-top:18px">Backup einspielen</h3>
+  <p class="muted small">Spielt ein zuvor heruntergeladenes ZIP wieder ein. <strong>Alle aktuellen Daten werden ersetzt.</strong> Vor dem Einspielen wird automatisch eine Sicherung der jetzigen Datenbank im <code>data/</code>-Ordner angelegt. Anschließend musst du dich neu anmelden.</p>
+  <form method="post" action="{{ url_for('settings.restore') }}" enctype="multipart/form-data"
+        onsubmit="return confirm('Wirklich einspielen? Die aktuellen Daten werden durch das Backup ersetzt. Eine Sicherungskopie der jetzigen Datenbank wird vorher angelegt.')"
+        class="row" style="margin-top:8px; align-items:center; gap:8px">
+    <input type="file" name="backup" accept=".zip" required>
+    <button class="btn danger">Backup einspielen</button>
+  </form>
+</div>
+{% endblock %}
