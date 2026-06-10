@@ -31,6 +31,10 @@ EXIT_UPDATE = 42
 # files/dirs in the install that must NEVER be overwritten by an update
 PROTECT = {"data", ".venv", "venv", ".git", "__pycache__"}
 
+# On Windows, keep the server subprocess from popping up its own console window
+# (the supervisor itself runs windowless via pythonw). Harmless no-op elsewhere.
+_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
 
 def _python():
     """The interpreter to run the server with (prefer the project venv)."""
@@ -64,7 +68,7 @@ def _apply_staged_update():
         req = BASE_DIR / "requirements.txt"
         if req.exists():
             subprocess.run([_python(), "-m", "pip", "install", "-q", "-r", str(req)],
-                           cwd=str(BASE_DIR))
+                           cwd=str(BASE_DIR), creationflags=_NO_WINDOW)
         print("[supervisor] update applied")
         return True
     except Exception as e:  # noqa: BLE001 - never let an update crash the loop
@@ -90,7 +94,8 @@ def main():
         _apply_staged_update()
 
     while True:
-        proc = subprocess.run([_python(), str(BASE_DIR / "run.py")], cwd=str(BASE_DIR))
+        proc = subprocess.run([_python(), str(BASE_DIR / "run.py")], cwd=str(BASE_DIR),
+                              creationflags=_NO_WINDOW)
         code = proc.returncode
         if code == EXIT_CLEAN:
             print("[supervisor] clean shutdown, stopping.")
