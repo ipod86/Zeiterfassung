@@ -4,6 +4,12 @@
 <h1>Einstellungen</h1>
 
 <form method="post" action="{{ url_for('settings.save') }}" enctype="multipart/form-data" class="card">
+  <h2>Allgemein</h2>
+  <label>Programmname (Kopfzeile)
+    <input name="app_name" value="{{ s.app_name }}" placeholder="z.B. Zeiterfassung – Musterfirma">
+  </label>
+  <p class="muted small">Wird oben links im Kopf angezeigt. Leer = Firmenname.</p>
+
   <h2>Firmendaten (für Rechnungskopf)</h2>
   <label>Firmenname <input name="company_name" value="{{ s.company_name }}"></label>
   <label>Adresse <textarea name="company_address">{{ s.company_address }}</textarea></label>
@@ -34,7 +40,20 @@
     <label>Logo {% if s.logo_file %}<img src="{{ url_for('uploads', filename=s.logo_file) }}" class="logo-preview">{% endif %}
       <input type="file" name="logo" accept="image/*"></label>
   </div>
+  <div class="row">
+    <label>Hintergrundbild (alle Seiten)
+      {% if s.bg_file %}<img src="{{ url_for('uploads', filename=s.bg_file) }}" class="bg-preview">{% endif %}
+      <input type="file" name="background" accept="image/*"></label>
+    <label>Deckkraft
+      <input name="bg_opacity" type="range" min="0" max="1" step="0.05" value="{{ s.bg_opacity or '0.35' }}"
+             oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'">
+      <span class="muted small">{{ ((s.bg_opacity or 0.35)|float * 100)|round|int }}%</span>
+    </label>
+  </div>
   <div class="row end">
+    {% if s.bg_file %}
+    <button class="btn ghost" formaction="{{ url_for('settings.remove_background') }}" formnovalidate>Hintergrund entfernen</button>
+    {% endif %}
     {% if s.logo_file %}
     <button class="btn ghost" formaction="{{ url_for('settings.remove_logo') }}" formnovalidate>Logo entfernen</button>
     {% endif %}

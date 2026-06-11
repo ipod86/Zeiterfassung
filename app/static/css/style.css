@@ -222,6 +222,7 @@ dialog::backdrop { background: rgba(15,18,28,.45); }
 .bar span { display: block; height: 100%; border-radius: 99px; }
 .bar-val { text-align: right; font-variant-numeric: tabular-nums; }
 .logo-preview { height: 28px; vertical-align: middle; margin-left: 8px; }
+.bg-preview { height: 44px; border-radius: 6px; border: 1px solid var(--border); vertical-align: middle; margin-left: 8px; object-fit: cover; }
 .hidden, [hidden] { display: none !important; }
 
 /* budget bars (overview project table) */

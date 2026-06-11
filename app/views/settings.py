@@ -16,10 +16,11 @@ from .. import updater
 
 bp = Blueprint("settings", __name__, url_prefix="/einstellungen")
 
-TEXT_KEYS = ["company_name", "company_address", "company_email", "company_phone",
-             "company_vat", "currency", "tax_rate", "rounding_minutes",
-             "budget_warn_pct", "backup_keep_days", "backup_time", "theme_primary"]
-ALLOWED_LOGO = {".png", ".jpg", ".jpeg", ".gif"}
+TEXT_KEYS = ["company_name", "app_name", "company_address", "company_email",
+             "company_phone", "company_vat", "currency", "tax_rate",
+             "rounding_minutes", "budget_warn_pct", "backup_keep_days",
+             "backup_time", "theme_primary", "bg_opacity"]
+ALLOWED_LOGO = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 
 @bp.route("/")
@@ -57,6 +58,14 @@ def save():
         get_db().execute("UPDATE users SET theme_mode=? WHERE id=?", (mode, uid))
         get_db().commit()
 
+    # keep the background opacity in a sane 0..1 range
+    if "bg_opacity" in f:
+        try:
+            op = min(1.0, max(0.0, float(f.get("bg_opacity") or 0.35)))
+        except ValueError:
+            op = 0.35
+        set_setting("bg_opacity", f"{op:.2f}")
+
     file = request.files.get("logo")
     if file and file.filename:
         ext = os.path.splitext(file.filename)[1].lower()
@@ -70,7 +79,20 @@ def save():
             set_setting("logo_w", str(size[0]) if size else "")
             set_setting("logo_h", str(size[1]) if size else "")
         else:
-            flash("Logo muss PNG/JPG/GIF sein.", "error")
+            flash("Logo muss PNG/JPG/GIF/WEBP sein.", "error")
+
+    bg = request.files.get("background")
+    if bg and bg.filename:
+        ext = os.path.splitext(bg.filename)[1].lower()
+        if ext in ALLOWED_LOGO:
+            fname = "background" + ext
+            dest = Path(current_app.config["UPLOAD_DIR"]) / fname
+            bg.save(dest)
+            set_setting("bg_path", str(dest))
+            set_setting("bg_file", fname)
+        else:
+            flash("Hintergrundbild muss PNG/JPG/GIF/WEBP sein.", "error")
+
     log_activity("einstellungen_gespeichert", "settings")
     flash("Einstellungen gespeichert.", "ok")
     return redirect(url_for("settings.index"))
@@ -89,6 +111,20 @@ def remove_logo():
     set_setting("logo_w", "")
     set_setting("logo_h", "")
     flash("Logo entfernt.", "ok")
+    return redirect(url_for("settings.index"))
+
+
+@bp.route("/hintergrund/entfernen", methods=["POST"])
+def remove_background():
+    s = get_settings()
+    if s.get("bg_path") and Path(s["bg_path"]).exists():
+        try:
+            Path(s["bg_path"]).unlink()
+        except OSError:
+            pass
+    set_setting("bg_path", "")
+    set_setting("bg_file", "")
+    flash("Hintergrundbild entfernt.", "ok")
     return redirect(url_for("settings.index"))
 
 

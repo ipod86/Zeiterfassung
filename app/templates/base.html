@@ -3,9 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Zeiterfassung{% endblock %}</title>
+  <title>{% block title %}{{ settings.app_name or 'Zeiterfassung' }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>:root { --primary: {{ settings.theme_primary or '#4f46e5' }}; }</style>
+  <style>:root { --primary: {{ settings.theme_primary or '#4f46e5' }}; }
+  {% if settings.bg_file %}
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: url("{{ url_for('uploads', filename=settings.bg_file) }}");
+    background-size: cover; background-position: center; background-attachment: fixed;
+    opacity: {{ settings.bg_opacity or '0.35' }};
+  }
+  {% endif %}</style>
 </head>
 <body>
 {% if current_user_id %}
@@ -15,7 +23,7 @@
       <img src="{{ url_for('uploads', filename=settings.logo_file) }}" alt="Logo" class="logo"
            {% if settings.logo_w and settings.logo_h %}width="{{ settings.logo_w }}" height="{{ settings.logo_h }}"{% endif %}>
     {% endif %}
-    <span class="brand-name">{{ settings.company_name or 'Zeiterfassung' }}</span>
+    <span class="brand-name">{{ settings.app_name or settings.company_name or 'Zeiterfassung' }}</span>
   </div>
   <nav class="mainnav">
     <a href="{{ url_for('main.index') }}" class="{{ 'active' if request.endpoint=='main.index' }}">Erfassen</a>

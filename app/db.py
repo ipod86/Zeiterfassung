@@ -7,6 +7,7 @@ DB_PATH = DATA_DIR / "zeiterfassung.db"
 
 DEFAULT_SETTINGS = {
     "company_name": "Meine Firma",
+    "app_name": "",
     "company_address": "",
     "company_email": "",
     "company_phone": "",
@@ -25,6 +26,9 @@ DEFAULT_SETTINGS = {
     "logo_file": "",
     "logo_w": "",
     "logo_h": "",
+    "bg_path": "",
+    "bg_file": "",
+    "bg_opacity": "0.35",
 }
 
 
